@@ -1,0 +1,236 @@
+.TH pdfwhodunit 1 "July 21, 2019"
+
+.
+.
+.
+.SH NAME
+pdfwhodunit, pdftrace.so - trace a PDF file
+
+.
+.
+.
+.SH SYNOPSIS
+[LD_PRELOAD=pdftrace.so] [GRANULARITY=n] \fBpdfwhodunit\fP file.pdf [box]
+
+LD_PRELOAD=\fBpdftrace.so\fP [GRANULARITY=n] program file.pdf
+
+.
+.
+.
+.SH DESCRIPTION
+
+\fBpdfwhodunit\fP tells which parts of a PDF file hold the content of an area
+of the page. It requires the \fBpdftrace.so\fP preload library, which must be
+either in the library path (\fILD_LIBRARY_PATH\fP or \fI/etc/ld.so.conf\fP) or
+in the current directory. The \fBpdftrace.so\fP preload library can be used
+with other programs to trace their access to PDF files.
+
+.SS pdfwhodunit
+
+If the PDF file contains something in the box passed as argument,
+\fBpdfwhodunit\fP traces it back to its position in the PDF file. An example
+call and output is:
+
+.nf
+> pdfwhodunit file.pdf [100,120-200,300]
+\&...
+read from 3913      to 4169
+OBJECT 5
+
+read from 9801      to 10057
+OBJECT 5
+.fi
+
+The program is requested to trace the rectangular area from the point
+\fI100,120\fP to the point \fI200,300\fP in the file \fIfile.pdf\fP. It answers
+that the given rectangle contains some text, lines or raster data originating
+between location \fI3913\fP and \fI4169\fP in the file and between \fI9801\fP
+and \fI10057\fP. These two zones of the file contain what is drawn in the box,
+more or less (tracing is not exact: see below for details).
+
+Normally, the content of PDF files is encoded and therefore impossible to read
+and change by hand. Recoding with \fIqpdf(1)\fP with option \fI-qdf\fP turns
+most parts of it into text:
+
+.nf
+.I qpdf -qdf input.pdf output.pdf
+.fi
+
+The box is either \fI[x1,y1,x2,y2]\fP or \fI[x,y+width,height]\fP and defaults
+to the whole page. It can be determined for example in \fIhovacui(1)\fP:
+
+.IP "  * " 4
+switch to "fit none" mode by key 'f' or commandline argument \fI-fn\fP
+.IP "  * "
+zoom to the part of the page to trace
+.IP "  * "
+save the coordinates of the area currently visible by key 'B'
+.IP "  * "
+retrieve the box from \fIhovacui-out.txt\fP
+
+.P
+
+If the last line of \fIhovacui-out.txt\fP is for example
+\fI[120,100-320,180]\fP, the content of that box is located in the PDF file can
+with \fPpdfwhodunit file.pdf [120,100-320,180]\fP. If it begins at position
+\fI1234\fP in the file, it can be shown in \fIvim(1)\fP by the command
+\fI:1234go\fP.
+
+Technically, \fIpdfwhodunit\fP only traces file reads. The displayed intervals
+\fI3913-4169\fP and \fI9801-10057\fP are the last zones read from
+\fIfile.pdf\fP before something is drawn in the rectangle
+\fI[100,120-200,300]\fP. These may not be exactly the parts of the file that
+hold the content of the box.
+
+\fIpdfwhodunit\fP reads the PDF file and renders it on an internal (invisible)
+buffer. Whenever something changes in the box that is passed as argument, it
+prints which portion of the file was last read. The content of that portion is
+what caused the box to change content. Also printed is the number of PDF object
+the file portion belongs to.
+
+The actual graphical operations (e.g., print a string, draw a line) that
+changed the content of the box may be in a previous portion since they only
+take effect as a result of a stroke operation, which may appear later in the
+file.
+
+The size of the portions of the PDF file as printed by \fIpdfwhodunit\fP is
+decided by the \fIpoppler(3)\fP library, and is typically 256 bytes. It can be
+reduced by the environment variable \fIGRANULARITY\fP. A small value makes
+tracing more precise but slower. A too small value makes \fIpdfwhodunit\fP
+unable to identify the PDF objects, which are therefore not printed.
+
+.SS pdftrace.so
+
+\fIpdfwhodunit\fP works by tracing the accesses to the PDF by the
+\fIpoppler(3)\fP library. This is done by intercepting the calls to
+\fIopen(2)\fP, \fIread(2)\fP and similar before they reach the standard C
+library \fIlibc.so\fP. The mechanism that makes this possible is the
+\fILD_PRELOAD\fP library \fIpdftrace.so\fP.
+
+The same mechanism can be used with other programs as well. For example, one
+may trace a PDF file while it is displayed:
+
+.nf
+LD_PRELOAD=pdftrace.so some_pdf_viewer file.pdf
+.fi
+
+In this case, \fIpdftrace.so\fP stops every time the program
+\fIsome_pdf_viewer\fP reads from the file. It continues when either the
+\fIF3\fP or the \fIF4\fP key is pressed. The first makes it proceed until the
+next read, the second until reading switches to another PDF object. If the PDF
+viewer displays content right after reading it from the file, this mechanism
+shows which parts of the file hold which page content.
+
+The same limitations described above apply: this is done by file reads, so the
+actual content may be located before the point that causes it to be displayed.
+How much to read each time is decided by the \fIpoppler(3)\fP library (but can
+be changed by the GRANULARITY environment variable). Additionally, the
+mechanism of stopping and printing is only useful if the content of the file is
+displayed as soon as it is read. It does not make sense if some form of double
+buffering is employed.
+
+.
+.
+.SH EXAMPLE
+
+The article \fIthe-theory-of-nothing.pdf\fP contains the obvious error that
+your name \fIProf. Dr. Franz Henrich Von Hausseldorfstain-Roberts Gonzalez\fP
+is spelled wrong, as it misses an 'n'. You do not have the LaTeX source written
+by your graduate students and are in a hurry to have it published. Being a
+well-educated person, you know that PDF files can be edited, contrary to the
+popular belief they cannot. The problem is that the file looks mostly like
+garbage when opened in a text editor, something like:
+
+.nf
+HaxB5mGJq+n#"bGr5@Wc%S6F%-_((rZJ(Ws]ZQq)QIXQRGX"E&>bN%;'8.W*+q7>*
+&_B$g3kLiQEA!uM_hL"rUKW1E.,=pkOa[:b)dg4W-sO_@%4O>K<0XEAdfA0bnd48S
+2HPkCkrf=64PWp5BC`$Jc:X.OU!5;C=?9!da#0H7&W6e:BWq[A0FG4<O24BVVcH;;
+j*r)/"<XLr#!1ZC$m%K>r4Q:!ACadUPA`Q'1-1F"<NM8$n&KK$I&mk%3mZDF1c/=^
+_"EpZ"WIKY;?MRTW5c1uY]CQsD#Ue4gscRLNK.86pt=81_u"Q&9rb,b7ond_1Qb.g
+Wiq%%1_LWkP9#94%h-mh2Lj$;L4#tHfu/u!7kkr`RLPdG8j%Be0:OAnMe1@:A^oc]
+.fi
+
+The first step is to make it readable by \fIqpdf(1)\fP:
+
+.nf
+qpdf -qdf the-theory-of-nothing.pdf readable.pdf
+.fi
+
+The second step is to locate your name in the file. Still better, locate the
+position of the missing 'n'. You open the file with \fIhovacui(1)\fP in no-fit
+mode:
+
+.nf
+hovacui -fn readable.pdf
+.fi
+
+Using 'z' to zoom and the cursor keys to move, you position the PDF viewer to
+the place of the missing letter in "Herich", making this word large enough so
+that nothing else is in the screen.
+
+Key 'B' tells the position of the corners of the screen in the document. You
+forget to write them down, but you do not worry: after closing the viewer, you
+find them in \fIhovacui-out.txt\fP. If the last line of this file is for
+example \fI[112.942,130.351-115.430,135.543]\fP, you pass that to
+\fIpdfwhodunit\fP:
+
+.nf
+GRANULARITY=10 pdfwhodunit readable.pdf [112.942,130.351-115.430,135.543]
+.fi
+
+The output contains:
+
+.nf
+\&...
+read from 4512      to 4522
+OBJECT 10
+.fi
+
+Now you open the pdf file with:
+
+.nf
+vim readable.pdf
+.fi
+
+And move to the position of interest with \fI:4512go\fP. Around this location,
+the file contains:
+
+.nf
+(Prof. ) Tj
+(Franz He) Tj
+(rich Von Hausse) Tj
+.fi
+
+You insert the missing 'n'. The file looks good except for an annoying warning
+about the xref blah blah blah. You fix it by again qpdf:
+
+.nf
+qpdf readable.pdf the-theory-of-nothing-fixed.pdf
+.fi
+
+And now the article is ready to be published!
+
+
+.
+.
+.
+.SH ENVIRONMENT VARIABLES
+
+.TP
+.B
+LD_PRELOAD
+set to \fIpdftrace.so\fP to trace PDF file access by an arbitrary program; this
+is done automatically by \fIpdfwhodunit\fP; depending on the permissions, the
+value of this variable might be just the library file name, an absolute or
+relative path
+.TP
+.B
+GRANULARITY
+trace the input file in blocks of this size, by default 256; small numbers
+increase the precision of tracing, but decrease efficiency; when it is too
+small, object starts are not detected
+.TP
+.B
+DOUBLEBUFFERING
+\fIpdftrace.so\fP sets it to "no" unless already set in the environment
+
