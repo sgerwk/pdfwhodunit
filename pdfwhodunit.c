@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
 			perror(argv[0]);
 			exit(EXIT_FAILURE);
 		}
-		else if (preload[0] == '.') {
+		else if (! strcmp(preload, "./pdftrace.so")) {
 			printf("trying LD_PRELOAD=pdftrace.so\n");
 			putenv("LD_PRELOAD=pdftrace.so");
 			execvp(argv[0], argv);
