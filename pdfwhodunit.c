@@ -74,14 +74,14 @@ int main(int argc, char *argv[]) {
 		if (preload == NULL) {
 			printf("trying LD_PRELOAD=./pdftrace.so\n");
 			putenv("LD_PRELOAD=./pdftrace.so");
-			execve(argv[0], argv, environ);
+			execvp(argv[0], argv);
 			perror(argv[0]);
 			exit(EXIT_FAILURE);
 		}
 		else if (preload[0] == '.') {
 			printf("trying LD_PRELOAD=pdftrace.so\n");
 			putenv("LD_PRELOAD=pdftrace.so");
-			execve(argv[0], argv, environ);
+			execvp(argv[0], argv);
 			perror(argv[0]);
 			exit(EXIT_FAILURE);
 		}
