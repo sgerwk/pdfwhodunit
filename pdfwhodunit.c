@@ -17,6 +17,8 @@
 #include <cairo.h>
 #include <cairo-pdf.h>
 
+#define HOMELIB "bin"
+
 /*
  * current and previous images
  */
@@ -40,7 +42,7 @@ int tracer() {
  * main
  */
 int main(int argc, char *argv[]) {
-	char *preload;
+	char *preload, *home, *var;
 	int opt;
 	gboolean usage = FALSE;
 	char *infile;
@@ -84,6 +86,18 @@ int main(int argc, char *argv[]) {
 			execvp(argv[0], argv);
 			perror(argv[0]);
 			exit(EXIT_FAILURE);
+		}
+		else if (! strcmp(preload, "pdftrace.so")) {
+			home = getenv("HOME");
+			if (home != NULL) {
+				var = malloc(strlen(home) + 100);
+				sprintf(var, "LD_PRELOAD=%s/%s",
+					home, "/" HOMELIB "/pdftrace.so");
+				putenv(var);
+				execvp(argv[0], argv);
+				perror(argv[0]);
+				exit(EXIT_FAILURE);
+			}
 		}
 
 		printf("cannot find pdftrace.so\n");
