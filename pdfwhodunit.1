@@ -21,9 +21,10 @@ LD_PRELOAD=\fBpdftrace.so\fP [GRANULARITY=n] program file.pdf
 
 \fBpdfwhodunit\fP tells which parts of a PDF file hold the content of an area
 of the page. It requires the \fBpdftrace.so\fP preload library, which must be
-either in the library path (\fILD_LIBRARY_PATH\fP or \fI/etc/ld.so.conf\fP) or
-in the current directory. The \fBpdftrace.so\fP preload library can be used
-with other programs to trace their access to PDF files.
+in the library path (\fILD_LIBRARY_PATH\fP or \fI/etc/ld.so.conf\fP), in the
+current directory or explicitely specified via the \fILD_PRELOAD\fP variable.
+The \fBpdftrace.so\fP preload library can be used with other programs to trace
+their access to PDF files.
 
 .SS pdfwhodunit
 
