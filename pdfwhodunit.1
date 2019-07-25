@@ -212,6 +212,47 @@ qpdf readable.pdf the-theory-of-nothing-fixed.pdf
 And now the article is ready to be published!
 
 
+
+.
+.
+.
+.SH STRUCTURE OF PDF
+
+A PDF file comprises a number of object, numbered from 1 on. Each object begins
+with an header line that specifies its number, like \fI21 0 obj\fP. It ends
+with the trailer line \fIendobj\fP. Example objects are:
+
+.IP "  * " 4
+the list of the pages in the document, an object number for each
+.IP "  * "
+the object for a page, with the number of the object holding its content
+.IP "  * "
+the object that holds the content of the page
+.IP "  * "
+the object for a font
+.IP "  * "
+the object for a raster image
+
+.P
+The content of a page is given by commands like:
+
+.nf
+BT                             % begin a text block
+/FONT1 8 Tf                    % select a font
+20 40 Td                       % move cursor to position 20,40
+(abcd) Tj                      % write the string "abcd"
+ET                             % end a text block
+20 80 60 -60 re                % draw a rectangle
+S                              % stroke
+.fi
+
+\fIpdfwhodunit\fP knows nothing of this. It simply presumes that if something
+is drawn in the box passed as argument right after reading a certain block of
+the file, that block contains what is in the box. But the actual box content
+may be earlier in the file. For example, the rectangle \fI20 80 60 -60 re\fP is
+actually drawn only as a result of the stroke \fIS\fP, which could have been
+much later in the file.
+
 .
 .
 .
